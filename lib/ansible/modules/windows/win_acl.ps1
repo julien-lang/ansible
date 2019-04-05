@@ -44,7 +44,7 @@ function Get-UserSID {
     return $userSID
 }
 
-$params = Parse-Args $args
+$params = Parse-Args $args -supports_check_mode $true
 
 Function SetPrivilegeTokens() {
     # Set privilege tokens only if admin.
@@ -79,6 +79,8 @@ Function SetPrivilegeTokens() {
 $result = @{
     changed = $false
 }
+
+$check_mode = Get-AnsibleParam -obj $params -name "_ansible_check_mode" -type "bool" -default $false
 
 $path = Get-AnsibleParam -obj $params -name "path" -type "str" -failifempty $true
 $user = Get-AnsibleParam -obj $params -name "user" -type "str" -failifempty $true
@@ -184,8 +186,11 @@ Try {
 
     If ($state -eq "present" -And $match -eq $false) {
         Try {
-            $objACL.AddAccessRule($objACE)
-            Set-ACL -LiteralPath $path -AclObject $objACL
+             if (!$check_mode) {
+                $objACL.AddAccessRule($objACE)
+                Set-ACL -LiteralPath $path -AclObject $objACL
+             }
+
             $result.changed = $true
         }
         Catch {
@@ -194,8 +199,11 @@ Try {
     }
     ElseIf ($state -eq "absent" -And $match -eq $true) {
         Try {
-            $objACL.RemoveAccessRule($objACE)
-            Set-ACL -LiteralPath $path -AclObject $objACL
+            if (!$check_mode) {
+                $objACL.RemoveAccessRule($objACE)
+                Set-ACL -LiteralPath $path -AclObject $objACL
+            }
+
             $result.changed = $true
         }
         Catch {
